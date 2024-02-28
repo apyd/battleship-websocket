@@ -1,19 +1,13 @@
-import { type Winner } from "../model/player.model"
-import { type Room } from "../model/room.model"
-// import { type Game } from "../model/game.model"
+import { Ship, Player, Room } from "../types"
 
 type DB = {
-  players: {name: string, index: number | string}[],
-  rooms: Room[],
-  winners: Winner[],
-  // games: Game[]
+  players: Player[],
+  rooms: Room[]
 }
 
 const db: DB = {
   players: [],
-  rooms: [],
-  winners: [],
-  // games: []
+  rooms: []
 }
 
 export default db
