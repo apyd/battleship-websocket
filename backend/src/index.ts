@@ -1,8 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
 import http from "node:http";
-import { WebSocketServer } from "ws";
-import { processData } from "./handleRequests";
+import { WebSocketServer, type WebSocket } from "ws";
+import { getRequestHandler } from "./handleRequests";
+import { getErrorMessage, sendMessage } from "./utils";
+import { ClientResponse, SendMessageCallback } from "./types";
+
+const clients: WebSocket[] = [];
 
 export const httpServer = http.createServer(function (req, res) {
   const dirname = path.dirname(path.join('../..'));
@@ -30,23 +34,33 @@ wss.on("listening", () => {
 });
 
 wss.on("connection", ws => {
-  ws.on("message", (message: Buffer) => {
+  console.log("Websocket connection created.")
+  clients.push(ws);
+
+  ws.on("message", (message) => {
     try {
-      const response = JSON.parse(message.toString());
-      console.log(response)
+      const response: ClientResponse = JSON.parse(message.toString());
       const { type, data } = response;
-      const parsedData = data ? JSON.parse(data) : data;
-      console.log('parsedData', parsedData)
-      processData(type)?.(ws, parsedData);
-    } catch (error: any) {
-      const errorMessage = error instanceof Error ? error.message : error;
+      const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
+      const onSend: SendMessageCallback = sendMessage(clients, ws);
+      getRequestHandler(type)?.(parsedData, onSend);
+    } catch (error) {
+      const errorMessage = getErrorMessage(error);
       throw new Error(errorMessage)
     }
   });
+
+  ws.on('close', () => {
+    const index = clients.indexOf(ws);
+    if (index > -1) {
+      clients.splice(index, 1);
+      console.log("Websocket connection closed.");
+    }
+  })
 });
 
 wss.on("close", () => {
-  console.log("Websocket connection closed.");
+  console.log("All websocket connections closed.");
 });
 
 httpServer.on("close", function () {
